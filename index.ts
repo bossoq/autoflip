@@ -49,6 +49,7 @@ const main = async () => {
   };
 
   const invest = async () => {
+    if (!running) return;
     let amount = lastFarm > 0 ? lastFarm : 1;
     const message = `!invest ${amount}`;
     await chatClient.say(channel, message).then(
@@ -62,9 +63,7 @@ const main = async () => {
   };
 
   const farm = async () => {
-    if (!running) {
-      return;
-    }
+    if (!running) return;
 
     const message = "!farm";
     await chatClient.say(channel, message).then(
@@ -79,8 +78,8 @@ const main = async () => {
 
   const initBot = () => {
     checkCoin();
-    farm();
     interval = setInterval(farm, farmIntervalMs);
+    farm();
   };
 
   chatClient.onRegister(() => {
