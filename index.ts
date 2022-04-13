@@ -78,6 +78,7 @@ const main = async () => {
 
   const initBot = () => {
     checkCoin();
+    if (interval) clearInterval(interval);
     interval = setInterval(farm, farmIntervalMs);
     farm();
   };
@@ -132,9 +133,9 @@ const main = async () => {
     } else if (waitMessage) {
       clearInterval(interval);
       setTimeout(() => {
+        interval = setInterval(farm, farmIntervalMs);
         farm();
       }, (parseInt(waitMessage[1]) + 5) * 1000);
-      interval = setInterval(farm, farmIntervalMs);
     }
   });
 
