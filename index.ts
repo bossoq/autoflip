@@ -135,7 +135,7 @@ const main = async () => {
       setTimeout(() => {
         farm();
       }, (parseInt(waitMessage[1]) + 5) * 1000);
-      setInterval(farm, farmIntervalMs);
+      interval = setInterval(farm, farmIntervalMs);
     }
   });
 
