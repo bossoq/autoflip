@@ -11,11 +11,11 @@ import {
 const farmIntervalMs = (farm * 60 + 5) * 1000;
 const botName = ["narzebot", "narzebotdev"];
 const userName = "bosssoq";
-let interval: ReturnType<typeof setInterval>;
+let interval: NodeJS.Timeout | undefined;
 let running = true;
 let coin = 0;
-let income = 0;
-let lastFarm = 0;
+let farmIncome = 0;
+let investIncome = 0;
 
 const main = async () => {
   const tokenData = JSON.parse(
@@ -35,8 +35,14 @@ const main = async () => {
     tokenData
   );
 
-  const chatClient = new ChatClient(auth, { channels: [channel] });
+  const chatClient = new ChatClient({authProvider: auth, channels: [channel] });
 
+  const clearFarmInterval = () => {
+    if (interval) {
+      clearInterval(interval);
+      interval = undefined;
+    }
+  };
   const checkCoin = async () => {
     await chatClient.say(channel, "!coin").then(
       () => {
@@ -48,9 +54,8 @@ const main = async () => {
     );
   };
 
-  const invest = async () => {
+  const invest = async (amount: number) => {
     if (!running) return;
-    let amount = lastFarm > 0 ? lastFarm : 1;
     const message = `!invest ${amount}`;
     await chatClient.say(channel, message).then(
       () => {
@@ -78,9 +83,9 @@ const main = async () => {
 
   const initBot = () => {
     checkCoin();
-    if (interval) clearInterval(interval);
-    interval = setInterval(farm, farmIntervalMs);
+    clearFarmInterval();
     farm();
+    interval = setInterval(farm, farmIntervalMs);
   };
 
   chatClient.onRegister(() => {
@@ -100,42 +105,46 @@ const main = async () => {
       if (message === "!stop") {
         if (running) {
           running = false;
-          clearInterval(interval);
+          clearFarmInterval();
         }
       }
       if (message === "!result") {
-        console.log(`${coin} coin, ${income} income`);
-        chatClient.say(channel, `${coin} coin, ${income} income`);
+        console.log(`${coin} coin, ${farmIncome} farm income, ${investIncome} invest income`);
+        chatClient.say(channel, `${coin} coin, ${farmIncome} farm income, ${investIncome} invest income`);
       }
       if (message === "!reset") {
         coin = 0;
-        income = 0;
-        lastFarm = 0;
+        farmIncome = 0;
+        investIncome = 0;
       }
     }
     if (!botName.includes(user.toLowerCase())) return;
     const farmMessage = message.match(/@bosssoq ฟาร์มได้ (\d+) \$OULONG/);
     const investMessage = message.match(
-      /@bosssoq ลงทุน (\d+) -> ได้ผลตอบแทน (\d+) \$OULONG \((\d+)\)/
+      /@bosssoq .+ ลงทุน (\d+) -> ได้ผลตอบแทน (\d+) \$OULONG \((\d+)\)/
     );
     const coinMessage = message.match(/@bosssoq has (\d+) \$OULONG/);
     const waitMessage = message.match(/@bosssoq รออีก (\d+) วินาที/);
+    const notLiveMessage = message.match(/@bosssoq ฟาร์มได้เฉพาะตอน Live เท่านั้น/)
     if (farmMessage) {
-      lastFarm = parseInt(farmMessage[1]);
-      income += lastFarm;
-      invest();
+      let lastFarm = parseInt(farmMessage[1]);
+      farmIncome += lastFarm;
+      invest(lastFarm);
     } else if (investMessage) {
-      income -= parseInt(investMessage[1]);
-      income += parseInt(investMessage[2]);
+      investIncome -= parseInt(investMessage[1]);
+      investIncome += parseInt(investMessage[2]);
       coin = parseInt(investMessage[3]);
     } else if (coinMessage) {
       coin = parseInt(coinMessage[1]);
     } else if (waitMessage) {
-      clearInterval(interval);
+      clearFarmInterval();
       setTimeout(() => {
-        interval = setInterval(farm, farmIntervalMs);
         farm();
+        interval = setInterval(farm, farmIntervalMs);
       }, (parseInt(waitMessage[1]) + 5) * 1000);
+    } else if (notLiveMessage) {
+      running = false;
+      clearFarmInterval();
     }
   });
 
